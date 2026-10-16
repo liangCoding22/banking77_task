@@ -15,6 +15,9 @@ dev = ["pytest>=8.0"]
 
 [project.scripts]
 banking77 = "banking77_task.cli:main"
+banking77-sft-data = "banking77_task.sft_data:main"
+banking77-sft = "banking77_task.sft_train:main"
+banking77-sweep = "banking77_task.sweep:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

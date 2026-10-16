@@ -26,7 +26,7 @@ def test_parse_label():
 def test_prompt_lists_all_labels_and_no_think_switch():
     system, user = (m["content"] for m in build_messages("hi", dict(enumerate(LABELS))))
     assert "card_arrival\nlost_or_stolen_card" in system and user.endswith("/no_think")
-    assert "/no_think" not in build_messages("hi", dict(enumerate(LABELS)), thinking=True)[1]["content"]
+    assert "/no_think" not in build_messages("hi", dict(enumerate(LABELS)), no_think=False)[1]["content"]
 
 
 def test_batch_roundtrip():
@@ -96,3 +96,68 @@ def test_labels_are_lowercase_and_parser_ignores_reply_case():
     assert "refund_not_showing_up" in label2id and "Refund_not_showing_up" not in label2id
     names = [id2label[i] for i in range(len(id2label))]
     assert parse_label("Refund_Not_Showing_Up", names) == label2id["refund_not_showing_up"]
+
+
+def test_sft_rows_and_sweep():
+    from banking77_task.sft_data import check_disjoint, to_row
+    from banking77_task.sweep import runs
+
+    row = to_row("hi", 1, dict(enumerate(LABELS)))["messages"]
+    assert [m["role"] for m in row] == ["system", "user", "assistant"]
+    assert "/no_think" not in row[1]["content"]
+    assert row[2] == {"role": "assistant", "content": "lost_or_stolen_card"} and "Examples:" not in row[0]["content"]
+    check_disjoint({"train_uids": ["a"], "dev_uids": ["b"], "fewshot_uids": ["c"]})
+    import pytest
+
+    with pytest.raises(AssertionError):
+        check_disjoint({"train_uids": ["a"], "dev_uids": ["b"], "fewshot_uids": ["a"]})
+    assert runs(1)[0][1] == "lr5e-5-r16" and runs(2, 1e-4)[1][1] == "lr1e-4-r32"
+
+
+def test_prompt_versions():
+    from banking77_task.prompts import uses_shots
+
+    from banking77_task.prompts import uses_no_think
+
+    assert not uses_shots("v1") and uses_shots("v2") and not uses_shots("v3")
+    assert uses_no_think("v1") and uses_no_think("v2") and not uses_no_think("v3")
+
+
+def test_chat_complete_one_parses_reply_and_retries(monkeypatch):
+    from banking77_task import chat
+
+    class Resp:
+        def __init__(self, code, body=None):
+            self.status_code, self._b, self.text = code, body, "x"
+
+        def json(self):
+            return self._b
+
+    calls = [Resp(429), Resp(200, {"choices": [{"message": {"content": "card_arrival"}, "finish_reason": "stop"}]})]
+
+    class Sess:
+        def post(self, *a, **k):
+            return calls.pop(0)
+
+    monkeypatch.setattr(chat.time, "sleep", lambda s: None)
+    assert chat.complete_one(Sess(), "m", {"custom_id": "a", "body": {"messages": []}}) == ("card_arrival", None, "stop")
+
+
+def test_chat_retries_404(monkeypatch):
+    from banking77_task import chat
+
+    class Resp:
+        def __init__(self, code, body=None):
+            self.status_code, self._b, self.text = code, body, "x"
+
+        def json(self):
+            return self._b
+
+    calls = [Resp(404), Resp(404), Resp(200, {"choices": [{"message": {"content": "a"}, "finish_reason": "stop"}]})]
+
+    class Sess:
+        def post(self, *a, **k):
+            return calls.pop(0)
+
+    monkeypatch.setattr(chat.time, "sleep", lambda s: None)
+    assert chat.complete_one(Sess(), "m", {"custom_id": "x", "body": {}})[1] is None
