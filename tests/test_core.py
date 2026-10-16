@@ -161,3 +161,21 @@ def test_chat_retries_404(monkeypatch):
 
     monkeypatch.setattr(chat.time, "sleep", lambda s: None)
     assert chat.complete_one(Sess(), "m", {"custom_id": "x", "body": {}})[1] is None
+
+
+def test_classify_command(monkeypatch, capsys):
+    import argparse
+
+    from banking77_task import cli
+
+    sent = []
+
+    def fake_complete(session, model, row):
+        sent.append((model, row["body"]["messages"][1]["content"]))
+        return "Card_Arrival", None, "stop"
+
+    monkeypatch.setenv("FIREWORKS_API_KEY", "x")
+    monkeypatch.setattr(cli, "complete_one", fake_complete)
+    cli.cmd_classify(argparse.Namespace(texts=["where is my card"], model="m#d", prompt_version="v3"))
+    assert sent == [("m#d", "Customer message: where is my card")]
+    assert capsys.readouterr().out.strip().endswith("card_arrival")

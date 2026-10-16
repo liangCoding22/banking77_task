@@ -1,0 +1,22 @@
+{
+  "run_name": "lr1e-4-r16",
+  "train_rows": 7848,
+  "eval_rows": 2001,
+  "steps_per_epoch": 246,
+  "total_steps": 738,
+  "checkpoints": {
+    "step-246": 1,
+    "step-492": 2,
+    "step-738": 3
+  },
+  "learning_rate": 0.0001,
+  "epochs": 3,
+  "batch_size": 32,
+  "lora_rank": 16,
+  "lora_alpha": 32,
+  "max_seq_len": 1024,
+  "renderer_name": "qwen3",
+  "output_model_id": "b77-lr1em4-r16",
+  "job_id": "training-api-service-1c00d405",
+  "steps": 738
+}

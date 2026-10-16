@@ -1,0 +1,52 @@
+{
+  "n": 3080,
+  "accuracy": 0.9116883116883117,
+  "macro_f1": 0.9118329853393191,
+  "unparsed": 6,
+  "worst_labels": [
+    [
+      "topping_up_by_card",
+      20
+    ],
+    [
+      "balance_not_updated_after_bank_transfer",
+      14
+    ],
+    [
+      "top_up_by_bank_transfer_charge",
+      13
+    ],
+    [
+      "direct_debit_payment_not_recognised",
+      13
+    ],
+    [
+      "top_up_failed",
+      13
+    ],
+    [
+      "compromised_card",
+      12
+    ],
+    [
+      "verify_my_identity",
+      12
+    ],
+    [
+      "transfer_not_received_by_recipient",
+      10
+    ],
+    [
+      "pending_transfer",
+      10
+    ],
+    [
+      "declined_transfer",
+      9
+    ]
+  ],
+  "finish_reasons": {
+    "stop": 3080
+  },
+  "errors": 0
+}

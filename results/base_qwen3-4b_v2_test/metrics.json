@@ -1,0 +1,52 @@
+{
+  "n": 3080,
+  "accuracy": 0.7834415584415585,
+  "macro_f1": 0.7783961913228707,
+  "unparsed": 23,
+  "worst_labels": [
+    [
+      "get_physical_card",
+      33
+    ],
+    [
+      "failed_transfer",
+      32
+    ],
+    [
+      "topping_up_by_card",
+      28
+    ],
+    [
+      "order_physical_card",
+      27
+    ],
+    [
+      "beneficiary_not_allowed",
+      26
+    ],
+    [
+      "fiat_currency_support",
+      24
+    ],
+    [
+      "top_up_by_bank_transfer_charge",
+      24
+    ],
+    [
+      "reverted_card_payment?",
+      24
+    ],
+    [
+      "balance_not_updated_after_bank_transfer",
+      22
+    ],
+    [
+      "direct_debit_payment_not_recognised",
+      20
+    ]
+  ],
+  "finish_reasons": {
+    "stop": 3080
+  },
+  "errors": 0
+}

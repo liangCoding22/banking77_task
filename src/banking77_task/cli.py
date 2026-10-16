@@ -1,4 +1,4 @@
-"""banking77 make-split | prepare | submit | report | chat-eval
+"""banking77 make-split | prepare | submit | report | chat-eval | classify
 
 make-split: freeze the dev set and few-shot examples into data/split.json (run once).
 prepare: build the dev set and the batch input JSONL locally (no network calls to Fireworks).
@@ -19,7 +19,7 @@ from pathlib import Path
 
 from banking77_task import prompts
 from banking77_task.data import DEV_FRACTION, load_label_mapping, load_label_names_and_splits
-from banking77_task.chat import complete_all, read_input_rows
+from banking77_task.chat import complete_all, complete_one, read_input_rows
 from banking77_task.fireworks import DEFAULT_MODEL, BatchClient, build_batch_jsonl, parse_batch_output
 from banking77_task.metrics import compute_metrics, per_intent_table
 from banking77_task.parsers import parse_label
@@ -132,10 +132,36 @@ def cmd_chat_eval(args: argparse.Namespace) -> None:
     write_report(out, results)
 
 
+def cmd_classify(args: argparse.Namespace) -> None:
+    """Classify one or more messages with a served model (serverless base model, or '<model>#<deployment>')."""
+    import requests
+
+    id2label, _ = load_label_mapping()
+    names = [id2label[i] for i in range(len(id2label))]
+    shots = None
+    if prompts.uses_shots(args.prompt_version):
+        _, train, _ = load_label_names_and_splits()
+        shots = select(train, load_split()["fewshot_uids"])
+    no_think = prompts.uses_no_think(args.prompt_version)
+    key = os.environ.get("FIREWORKS_API_KEY")
+    if not key:
+        raise SystemExit("Set FIREWORKS_API_KEY.")
+    session = requests.Session()
+    session.headers["Authorization"] = f"Bearer {key}"
+    for text in args.texts:
+        row = {"body": {"messages": prompts.build_messages(text, id2label, no_think, shots), "max_tokens": 32, "temperature": 0.0}}
+        reply, error, _ = complete_one(session, args.model, row)
+        if error:
+            print(f"{text!r}\t<error: {error}>")
+            continue
+        pred = parse_label(reply, names)
+        print(f"{text!r}\t{names[pred] if pred is not None else '<unparsed: ' + reply + '>'}")
+
+
 def main() -> None:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="cmd", required=True)
-    for name, fn in (("make-split", cmd_make_split), ("prepare", cmd_prepare), ("submit", cmd_submit), ("report", cmd_report), ("chat-eval", cmd_chat_eval)):
+    for name, fn in (("make-split", cmd_make_split), ("prepare", cmd_prepare), ("submit", cmd_submit), ("report", cmd_report), ("chat-eval", cmd_chat_eval), ("classify", cmd_classify)):
         s = sub.add_parser(name)
         s.set_defaults(fn=fn)
         if name == "make-split":
@@ -155,6 +181,8 @@ def main() -> None:
             s.add_argument("--max-tokens", type=int, default=32)
             s.add_argument("--temperature", type=float, default=0.0)
             s.add_argument("--thinking", action="store_true", help="leave Qwen3 thinking on (raise --max-tokens)")
+        elif name == "classify":
+            s.add_argument("texts", nargs="+", help="customer messages to classify")
         elif name == "chat-eval":
             s.add_argument("--concurrency", type=int, default=16)
             s.add_argument("--only-failed", action="store_true", help="rerun only rows that errored in chat_output.jsonl")
